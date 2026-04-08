@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scanner Aliments">
+<meta name="theme-color" content="#0f0f0f">
+<title>Scanner Aliments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0c0c0b;
+    --surface: #161614;
+    --surface2: #1e1e1b;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ece3;
+    --text2: rgba(240,236,227,0.5);
+    --text3: rgba(240,236,227,0.28);
+    --accent: #b8f0a0;
+    --accent-dim: rgba(184,240,160,0.12);
+    --ns-a: #1a7a3c;
+    --ns-b: #5aac44;
+    --ns-c: #f5c500;
+    --ns-d: #ef7d00;
+    --ns-e: #e63312;
+    --r: 12px;
+    --r-lg: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overscroll-behavior: none;
+  }
+
+  .app {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+  }
+
+  /* Header */
+  .header {
+    padding: 20px 24px 16px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .header-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  /* Main content */
+  .content {
+    flex: 1;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Scan button */
+  .scan-btn {
+    width: 100%;
+    padding: 18px 24px;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--r-lg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: background 0.15s, border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .scan-btn:active { background: var(--surface2); }
+  .scan-btn.active { border-color: var(--accent); background: var(--accent-dim); }
+
+  .scan-icon {
+    width: 20px; height: 20px;
+    flex-shrink: 0;
+  }
+
+  /* Scanner area */
+  .scanner-wrap {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .scanner-wrap.visible { display: flex; }
+
+  .scanner-container {
+    position: relative;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    border: 0.5px solid var(--border2);
+    background: #000;
+    aspect-ratio: 1 / 1;
+  }
+
+  #scanner-div {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  #scanner-div video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  #scanner-div img { display: none !important; }
+
+  .scanner-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .scan-frame {
+    width: 68%;
+    aspect-ratio: 3 / 2;
+    position: relative;
+  }
+  .scan-frame::before, .scan-frame::after,
+  .scan-frame .c3::before, .scan-frame .c3::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .scan-frame::before { top: 0; left: 0; border-width: 1.5px 0 0 1.5px; }
+  .scan-frame::after  { top: 0; right: 0; border-width: 1.5px 1.5px 0 0; }
+  .scan-frame .c3::before { bottom: 0; left: 0; border-width: 0 0 1.5px 1.5px; }
+  .scan-frame .c3::after  { bottom: 0; right: 0; border-width: 0 1.5px 1.5px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 6%; right: 6%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanline 2s ease-in-out infinite;
+    top: 10%;
+  }
+  @keyframes scanline {
+    0%   { top: 10%; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 90%; opacity: 0; }
+  }
+
+  .scanner-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+  }
+
+  /* Manual input */
+  .manual-row {
+    display: flex;
+    gap: 8px;
+  }
+  .manual-input {
+    flex: 1;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    -webkit-appearance: none;
+  }
+  .manual-input:focus {
+    outline: none;
+    border-color: var(--border2);
+  }
+  .manual-input::placeholder { color: var(--text3); }
+  .manual-btn {
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    -webkit-appearance: none;
+    white-space: nowrap;
+  }
+  .manual-btn:active { background: var(--surface2); }
+
+  /* Result card */
+  .result-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    display: none;
+  }
+  .result-card.visible { display: block; }
+
+  .result-photo {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    background: #111;
+    display: block;
+  }
+  .result-photo-placeholder {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: var(--surface2);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .result-photo-placeholder span {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .result-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .result-meta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .result-name-wrap {}
+  .result-brand {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .result-name {
+    font-family: 'Instrument Serif', serif;
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 1.25;
+    color: var(--text);
+  }
+
+  /* Nutri-Score badge */
+  .nutriscore-badge {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .nutriscore-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .nutriscore-letter {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 400;
+    color: #fff;
+    letter-spacing: 0;
+  }
+  .ns-a { background: var(--ns-a); }
+  .ns-b { background: var(--ns-b); }
+  .ns-c { background: var(--ns-c); color: #111; }
+  .ns-d { background: var(--ns-d); }
+  .ns-e { background: var(--ns-e); }
+  .ns-unknown { background: var(--surface2); color: var(--text3); font-size: 14px; }
+
+  /* Macros table */
+  .macros {
+    border-top: 0.5px solid var(--border);
+    padding-top: 16px;
+  }
+  .macros-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+  .macros-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .macro-item {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .macro-val {
+    font-size: 15px;
+    font-weight: 400;
+    color: var(--text);
+    display: block;
+  }
+  .macro-key {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.06em;
+    display: block;
+    margin-top: 2px;
+  }
+  .macro-item.kcal .macro-val { color: var(--accent); }
+
+  /* Barcode display */
+  .barcode-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 0.5px solid var(--border);
+  }
+  .barcode-num {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Loading state */
+  .loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    color: var(--text3);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+  .loading.visible { display: flex; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-msg {
+    display: none;
+    padding: 14px 16px;
+    background: rgba(230,51,18,0.08);
+    border: 0.5px solid rgba(230,51,18,0.2);
+    border-radius: var(--r);
+    font-size: 12px;
+    color: #e66350;
+    letter-spacing: 0.04em;
+  }
+  .error-msg.visible { display: block; }
+
+  /* Success flash */
+  @keyframes flash {
+    0%   { border-color: var(--accent); }
+    100% { border-color: var(--border2); }
+  }
+  .scanner-container.flash { animation: flash 0.4s ease-out; }
+
+  /* Bottom bar */
+  .bottom-bar {
+    padding: 12px 24px calc(env(safe-area-inset-bottom, 0px) + 12px);
+    border-top: 0.5px solid var(--border);
+    text-align: center;
+  }
+  .bottom-bar span {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <h1>Scanner Aliments</h1>
+    <div class="header-dot"></div>
+  </header>
+
+  <main class="content">
+
+    <!-- Scan button -->
+    <button class="scan-btn" id="scanBtn" onclick="toggleScanner()">
+      <svg class="scan-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="5" width="2" height="10" fill="currentColor" opacity="0.7"/>
+        <rect x="4.5" y="5" width="1" height="10" fill="currentColor" opacity="0.5"/>
+        <rect x="7" y="5" width="2.5" height="10" fill="currentColor"/>
+        <rect x="11" y="5" width="1" height="10" fill="currentColor" opacity="0.5"/>
+        <rect x="13.5" y="5" width="1.5" height="10" fill="currentColor" opacity="0.7"/>
+        <rect x="16" y="5" width="1" height="10" fill="currentColor"/>
+        <rect x="18" y="5" width="1" height="10" fill="currentColor" opacity="0.4"/>
+      </svg>
+      <span id="scanBtnLabel">Scanner un produit</span>
+    </button>
+
+    <!-- Scanner area -->
+    <div class="scanner-wrap" id="scannerWrap">
+      <div class="scanner-container" id="scannerContainer">
+        <div id="scanner-div"></div>
+        <div class="scanner-overlay">
+          <div class="scan-frame">
+            <div class="c3"></div>
+            <div class="scan-line"></div>
+          </div>
+        </div>
+      </div>
+      <p class="scanner-hint">Centrez le code-barres dans le cadre</p>
+    </div>
+
+    <!-- Manual input -->
+    <div class="manual-row">
+      <input class="manual-input" type="number" id="manualInput"
+        placeholder="Code EAN-13 manuel…" inputmode="numeric">
+      <button class="manual-btn" onclick="manualLookup()">Chercher</button>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span>Recherche en cours…</span>
+    </div>
+
+    <!-- Error -->
+    <div class="error-msg" id="errorMsg"></div>
+
+    <!-- Result -->
+    <div class="result-card" id="resultCard">
+      <img class="result-photo" id="resultPhoto" alt="Photo du produit">
+      <div class="result-photo-placeholder" id="resultPlaceholder">
+        <span>Pas de photo</span>
+      </div>
+      <div class="result-body">
+        <div class="result-meta">
+          <div class="result-name-wrap">
+            <div class="result-brand" id="resultBrand"></div>
+            <div class="result-name" id="resultName"></div>
+          </div>
+          <div class="nutriscore-badge">
+            <span class="nutriscore-label">Nutri</span>
+            <div class="nutriscore-letter" id="nutriscoreBox">?</div>
+          </div>
+        </div>
+
+        <div class="macros" id="macrosSection">
+          <div class="macros-title">Pour 100 g</div>
+          <div class="macros-grid">
+            <div class="macro-item kcal">
+              <span class="macro-val" id="macroKcal">—</span>
+              <span class="macro-key">kcal</span>
+            </div>
+            <div class="macro-item">
+              <span class="macro-val" id="macroGlucides">—</span>
+              <span class="macro-key">glucides</span>
+            </div>
+            <div class="macro-item">
+              <span class="macro-val" id="macroLipides">—</span>
+              <span class="macro-key">lipides</span>
+            </div>
+            <div class="macro-item">
+              <span class="macro-val" id="macroProteines">—</span>
+              <span class="macro-key">protéines</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="barcode-row">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="0" y="2" width="1.5" height="10" fill="rgba(240,236,227,0.25)"/>
+            <rect x="3" y="2" width="1" height="10" fill="rgba(240,236,227,0.2)"/>
+            <rect x="5.5" y="2" width="2" height="10" fill="rgba(240,236,227,0.25)"/>
+            <rect x="9" y="2" width="1" height="10" fill="rgba(240,236,227,0.2)"/>
+            <rect x="11.5" y="2" width="2.5" height="10" fill="rgba(240,236,227,0.25)"/>
+          </svg>
+          <span class="barcode-num" id="barcodeNum"></span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bottom-bar">
+    <span>données · Open Food Facts</span>
+  </footer>
+</div>
+
+<script>
+let html5QrCode = null;
+let scanning = false;
+let lastCode = null;
+
+function toggleScanner() {
+  if (scanning) {
+    stopScanner();
+  } else {
+    startScanner();
+  }
+}
+
+async function startScanner() {
+  const wrap = document.getElementById('scannerWrap');
+  const btn  = document.getElementById('scanBtn');
+  const lbl  = document.getElementById('scanBtnLabel');
+
+  wrap.classList.add('visible');
+  btn.classList.add('active');
+  lbl.textContent = 'Arrêter le scanner';
+  scanning = true;
+
+  try {
+    html5QrCode = new Html5Qrcode("scanner-div");
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 220, height: 140 },
+        aspectRatio: 1.0,
+        disableFlip: false,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ]
+      },
+      onScanSuccess,
+      () => {}
+    );
+  } catch (err) {
+    showError("Impossible d'accéder à la caméra. Vérifiez les permissions dans Safari (Réglages → Safari → Caméra).");
+    stopScanner();
+  }
+}
+
+async function stopScanner() {
+  const wrap = document.getElementById('scannerWrap');
+  const btn  = document.getElementById('scanBtn');
+  const lbl  = document.getElementById('scanBtnLabel');
+
+  if (html5QrCode) {
+    try { await html5QrCode.stop(); } catch(e) {}
+    html5QrCode = null;
+  }
+
+  wrap.classList.remove('visible');
+  btn.classList.remove('active');
+  lbl.textContent = 'Scanner un produit';
+  scanning = false;
+}
+
+function onScanSuccess(decodedText) {
+  if (decodedText === lastCode) return;
+  lastCode = decodedText;
+
+  const container = document.getElementById('scannerContainer');
+  container.classList.add('flash');
+  setTimeout(() => container.classList.remove('flash'), 400);
+
+  stopScanner();
+  fetchProduct(decodedText);
+}
+
+function manualLookup() {
+  const val = document.getElementById('manualInput').value.trim();
+  if (!val) return;
+  fetchProduct(val);
+}
+
+async function fetchProduct(barcode) {
+  hideError();
+  showLoading(true);
+  document.getElementById('resultCard').classList.remove('visible');
+  lastCode = barcode;
+
+  try {
+    const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data = await res.json();
+
+    if (data.status !== 1) {
+      showError(`Produit introuvable pour le code « ${barcode} ».`);
+      return;
+    }
+
+    displayResult(data.product, barcode);
+  } catch(e) {
+    showError("Erreur réseau. Vérifiez votre connexion et réessayez.");
+  } finally {
+    showLoading(false);
+  }
+}
+
+function displayResult(p, barcode) {
+  const name   = p.product_name || p.product_name_fr || 'Produit inconnu';
+  const brand  = p.brands || '';
+  const ns     = (p.nutriscore_grade || p.nutrition_grade_fr || '').toUpperCase();
+  const photo  = p.image_front_url || p.image_url || '';
+  const n100   = p.nutriments || {};
+
+  const kcal     = round(n100['energy-kcal_100g'] || n100['energy-kcal'] || null);
+  const glucides = round(n100['carbohydrates_100g'] || null);
+  const lipides  = round(n100['fat_100g'] || null);
+  const proteines= round(n100['proteins_100g'] || null);
+
+  document.getElementById('resultName').textContent  = name;
+  document.getElementById('resultBrand').textContent = brand;
+  document.getElementById('barcodeNum').textContent  = barcode;
+
+  document.getElementById('macroKcal').textContent      = kcal     !== null ? kcal    : '—';
+  document.getElementById('macroGlucides').textContent  = glucides !== null ? glucides+ 'g' : '—';
+  document.getElementById('macroLipides').textContent   = lipides  !== null ? lipides + 'g' : '—';
+  document.getElementById('macroProteines').textContent = proteines!== null ? proteines+'g': '—';
+
+  const nsBox = document.getElementById('nutriscoreBox');
+  nsBox.className = 'nutriscore-letter';
+  if (['A','B','C','D','E'].includes(ns)) {
+    nsBox.classList.add('ns-' + ns.toLowerCase());
+    nsBox.textContent = ns;
+  } else {
+    nsBox.classList.add('ns-unknown');
+    nsBox.textContent = '?';
+  }
+
+  const img  = document.getElementById('resultPhoto');
+  const plch = document.getElementById('resultPlaceholder');
+  if (photo) {
+    img.src = photo;
+    img.style.display = 'block';
+    plch.style.display = 'none';
+    img.onerror = () => {
+      img.style.display = 'none';
+      plch.style.display = 'flex';
+    };
+  } else {
+    img.style.display = 'none';
+    plch.style.display = 'flex';
+  }
+
+  document.getElementById('resultCard').classList.add('visible');
+}
+
+function round(val) {
+  if (val === null || val === undefined || isNaN(val)) return null;
+  return Math.round(val * 10) / 10;
+}
+
+function showLoading(v) {
+  document.getElementById('loading').classList.toggle('visible', v);
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+document.getElementById('manualInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') manualLookup();
+});
+</script>
+</body>
+</html>
