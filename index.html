@@ -652,7 +652,7 @@ async function startFallbackScanner() {
     html5QrCode = new Html5Qrcode("scanner-div");
     await html5QrCode.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+      { fps: 10, qrbox: { width: 300, height: 200 }, aspectRatio: 1.0 },
       onScanSuccess,
       () => {}
     );
