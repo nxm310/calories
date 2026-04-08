@@ -599,7 +599,7 @@ async function startScanner() {
   }
 }
 
-/* ---- BarcodeDetector natif ---- */
+/* ---- BarcodeDetector natif via canvas (iOS Safari compatible) ---- */
 async function startNativeScanner() {
   const scannerDiv = document.getElementById('scanner-div');
   scannerDiv.innerHTML = '';
@@ -611,36 +611,47 @@ async function startNativeScanner() {
   video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
   scannerDiv.appendChild(video);
 
+  const canvas = document.createElement('canvas');
+  canvas.style.display = 'none';
+  scannerDiv.appendChild(canvas);
+
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
     video.srcObject = videoStream;
+    await new Promise(resolve => { video.onloadedmetadata = resolve; });
     await video.play();
-    detectLoop(video);
+    canvas.width  = video.videoWidth  || 1280;
+    canvas.height = video.videoHeight || 720;
+    detectLoop(video, canvas);
   } catch(err) {
     showError("Impossible d'accéder à la caméra. Autorisez l'accès dans Safari (Réglages → Safari → Caméra).");
     stopScanner();
   }
 }
 
-function detectLoop(video) {
+let lastDetectTime = 0;
+
+function detectLoop(video, canvas) {
   if (!scanning) return;
-  if (video.readyState < 2) {
-    animFrameId = requestAnimationFrame(() => detectLoop(video));
-    return;
+  const now = performance.now();
+
+  if (now - lastDetectTime >= 300 && video.readyState >= 2 && video.videoWidth > 0) {
+    lastDetectTime = now;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    createImageBitmap(canvas).then(bitmap => {
+      return nativeDetector.detect(bitmap);
+    }).then(barcodes => {
+      if (barcodes.length > 0) onScanSuccess(barcodes[0].rawValue);
+    }).catch(() => {});
   }
 
-  nativeDetector.detect(video).then(barcodes => {
-    if (barcodes.length > 0) {
-      const code = barcodes[0].rawValue;
-      onScanSuccess(code);
-    } else {
-      animFrameId = requestAnimationFrame(() => detectLoop(video));
-    }
-  }).catch(() => {
-    animFrameId = requestAnimationFrame(() => detectLoop(video));
-  });
+  animFrameId = requestAnimationFrame(() => detectLoop(video, canvas));
 }
 
 /* ---- Fallback html5-qrcode ---- */
@@ -652,7 +663,7 @@ async function startFallbackScanner() {
     html5QrCode = new Html5Qrcode("scanner-div");
     await html5QrCode.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 300, height: 200 }, aspectRatio: 1.0 },
+      { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
       onScanSuccess,
       () => {}
     );
