@@ -5,851 +5,636 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Scanner Aliments">
+<meta name="apple-mobile-web-app-title" content="Journal Repas">
 <meta name="theme-color" content="#0f0f0f">
-<title>Scanner Aliments</title>
+<title>Journal Repas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
 <style>
-  :root {
-    --bg: #0c0c0b;
-    --surface: #161614;
-    --surface2: #1e1e1b;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.14);
-    --text: #f0ece3;
-    --text2: rgba(240,236,227,0.5);
-    --text3: rgba(240,236,227,0.28);
-    --accent: #b8f0a0;
-    --accent-dim: rgba(184,240,160,0.12);
-    --ns-a: #1a7a3c;
-    --ns-b: #5aac44;
-    --ns-c: #f5c500;
-    --ns-d: #ef7d00;
-    --ns-e: #e63312;
-    --r: 12px;
-    --r-lg: 20px;
-  }
+:root {
+  --bg:#0c0c0b; --surface:#161614; --surface2:#1e1e1b; --surface3:#242420;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --text:#f0ece3; --text2:rgba(240,236,227,0.5); --text3:rgba(240,236,227,0.28);
+  --accent:#b8f0a0; --accent-dim:rgba(184,240,160,0.1);
+  --ns-a:#1a7a3c; --ns-b:#5aac44; --ns-c:#f5c500; --ns-d:#ef7d00; --ns-e:#e63312;
+  --mb:#f0a050; --ml:#70c8a0; --ms:#a090e0; --md:#6090d8;
+  --r:12px; --r-lg:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:14px;line-height:1.6;overscroll-behavior:none}
+.app{min-height:100dvh;display:flex;flex-direction:column;max-width:430px;margin:0 auto}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+/* TABS */
+.tabs-nav{display:flex;background:var(--surface);border-bottom:0.5px solid var(--border2);padding-top:env(safe-area-inset-top,0px);position:sticky;top:0;z-index:100}
+.tab-btn{flex:1;padding:13px 8px 11px;background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;border-bottom:1.5px solid transparent;transition:color .15s,border-color .15s}
+.tab-btn svg{opacity:.4;transition:opacity .15s}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-btn.active svg{opacity:1}
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    line-height: 1.6;
-    overscroll-behavior: none;
-  }
+/* PAGES */
+.page{display:none;flex:1;flex-direction:column;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
+.page.active{display:flex}
 
-  .app {
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    max-width: 430px;
-    margin: 0 auto;
-    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
-  }
+/* ---- SCANNER PAGE ---- */
+.scanner-page{padding:20px;gap:16px}
+.scan-btn{width:100%;padding:16px 24px;background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--r-lg);color:var(--text);font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;-webkit-appearance:none}
+.scan-btn.active{border-color:var(--accent);background:var(--accent-dim)}
+.scanner-wrap{display:none;flex-direction:column;gap:10px}
+.scanner-wrap.visible{display:flex}
+.scanner-container{position:relative;border-radius:var(--r-lg);overflow:hidden;border:0.5px solid var(--border2);background:#000;aspect-ratio:1/1}
+#scanner-div{width:100%!important;height:100%!important}
+#scanner-div video{width:100%!important;height:100%!important;object-fit:cover!important}
+#scanner-div img{display:none!important}
+.scanner-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
+.scan-frame{width:68%;aspect-ratio:3/2;position:relative}
+.scan-frame::before,.scan-frame::after,.scan-frame .c3::before,.scan-frame .c3::after{content:'';position:absolute;width:18px;height:18px;border-color:var(--accent);border-style:solid}
+.scan-frame::before{top:0;left:0;border-width:1.5px 0 0 1.5px}
+.scan-frame::after{top:0;right:0;border-width:1.5px 1.5px 0 0}
+.scan-frame .c3::before{bottom:0;left:0;border-width:0 0 1.5px 1.5px}
+.scan-frame .c3::after{bottom:0;right:0;border-width:0 1.5px 1.5px 0}
+.scan-line{position:absolute;left:6%;right:6%;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanline 2s ease-in-out infinite;top:10%}
+@keyframes scanline{0%{top:10%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:90%;opacity:0}}
+.scanner-hint{text-align:center;font-size:11px;color:var(--text3);letter-spacing:.05em}
+.manual-row{display:flex;gap:8px}
+.manual-input{flex:1;padding:11px 14px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;-webkit-appearance:none}
+.manual-input:focus{outline:none;border-color:var(--border2)}
+.manual-input::placeholder{color:var(--text3)}
+.manual-btn{padding:11px 14px;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);color:var(--text2);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.06em;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
+.manual-btn:active{background:var(--surface2)}
+.loading{display:none;align-items:center;justify-content:center;gap:10px;padding:20px;color:var(--text3);font-size:12px;letter-spacing:.08em}
+.loading.visible{display:flex}
+.spinner{width:16px;height:16px;border:1.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{display:none;padding:12px 14px;background:rgba(230,51,18,.08);border:0.5px solid rgba(230,51,18,.2);border-radius:var(--r);font-size:12px;color:#e66350}
+.error-msg.visible{display:block}
 
-  /* Header */
-  .header {
-    padding: 20px 24px 16px;
-    border-bottom: 0.5px solid var(--border);
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-  .header h1 {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
-    font-size: 22px;
-    font-weight: 400;
-    color: var(--text);
-    letter-spacing: -0.3px;
-  }
-  .header-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    flex-shrink: 0;
-    align-self: center;
-  }
+/* Result */
+.result-card{background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--r-lg);overflow:hidden;display:none}
+.result-card.visible{display:block}
+.result-photo{width:100%;aspect-ratio:4/3;object-fit:contain;background:#111;display:block}
+.result-photo-placeholder{width:100%;aspect-ratio:4/3;background:var(--surface2);display:none;align-items:center;justify-content:center}
+.result-photo-placeholder span{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.result-body{padding:18px;display:flex;flex-direction:column;gap:14px}
+.result-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.result-brand{font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.result-name{font-family:'Instrument Serif',serif;font-size:18px;font-weight:400;line-height:1.25;color:var(--text)}
+.nutriscore-badge{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px}
+.nutriscore-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.nutriscore-letter{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:18px;color:#fff}
+.ns-a{background:var(--ns-a)}.ns-b{background:var(--ns-b)}.ns-c{background:var(--ns-c);color:#111}.ns-d{background:var(--ns-d)}.ns-e{background:var(--ns-e)}.ns-unknown{background:var(--surface2);color:var(--text3);font-size:13px}
+.macros{border-top:0.5px solid var(--border);padding-top:14px}
+.macros-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.macros-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.macro-item{background:var(--surface2);border-radius:8px;padding:9px 6px;text-align:center}
+.macro-val{font-size:14px;color:var(--text);display:block}
+.macro-key{font-size:10px;color:var(--text3);letter-spacing:.05em;display:block;margin-top:1px}
+.macro-item.kcal .macro-val{color:var(--accent)}
+.add-to-meal{border-top:0.5px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.add-to-meal-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:2px}
+.qty-row{display:flex;align-items:center;gap:8px}
+.qty-label{font-size:11px;color:var(--text3)}
+.qty-input{width:70px;padding:7px 10px;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;text-align:center;-webkit-appearance:none}
+.qty-input:focus{outline:none;border-color:var(--border2)}
+.qty-unit{font-size:11px;color:var(--text3)}
+.qty-kcal{font-size:12px;color:var(--accent);margin-left:auto}
+.meal-btns{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.meal-add-btn{padding:10px 8px;border-radius:10px;border:0.5px solid;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;-webkit-appearance:none;transition:opacity .15s}
+.meal-add-btn:active{opacity:.7}
+.meal-add-btn[data-meal="breakfast"]{color:var(--mb);border-color:rgba(240,160,80,.3);background:rgba(240,160,80,.07)}
+.meal-add-btn[data-meal="lunch"]{color:var(--ml);border-color:rgba(112,200,160,.3);background:rgba(112,200,160,.07)}
+.meal-add-btn[data-meal="snack"]{color:var(--ms);border-color:rgba(160,144,224,.3);background:rgba(160,144,224,.07)}
+.meal-add-btn[data-meal="dinner"]{color:var(--md);border-color:rgba(96,144,216,.3);background:rgba(96,144,216,.07)}
+@keyframes flash{0%{border-color:var(--accent)}100%{border-color:var(--border2)}}
+.scanner-container.flash{animation:flash .4s ease-out}
 
-  /* Main content */
-  .content {
-    flex: 1;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  /* Scan button */
-  .scan-btn {
-    width: 100%;
-    padding: 18px 24px;
-    background: var(--surface);
-    border: 0.5px solid var(--border2);
-    border-radius: var(--r-lg);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    transition: background 0.15s, border-color 0.15s;
-    -webkit-appearance: none;
-  }
-  .scan-btn:active { background: var(--surface2); }
-  .scan-btn.active { border-color: var(--accent); background: var(--accent-dim); }
-
-  .scan-icon {
-    width: 20px; height: 20px;
-    flex-shrink: 0;
-  }
-
-  /* Scanner area */
-  .scanner-wrap {
-    display: none;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .scanner-wrap.visible { display: flex; }
-
-  .scanner-container {
-    position: relative;
-    border-radius: var(--r-lg);
-    overflow: hidden;
-    border: 0.5px solid var(--border2);
-    background: #000;
-    aspect-ratio: 1 / 1;
-  }
-
-  #scanner-div {
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  #scanner-div video {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
-  }
-
-  #scanner-div img { display: none !important; }
-
-  .scanner-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .scan-frame {
-    width: 68%;
-    aspect-ratio: 3 / 2;
-    position: relative;
-  }
-  .scan-frame::before, .scan-frame::after,
-  .scan-frame .c3::before, .scan-frame .c3::after {
-    content: '';
-    position: absolute;
-    width: 18px; height: 18px;
-    border-color: var(--accent);
-    border-style: solid;
-  }
-  .scan-frame::before { top: 0; left: 0; border-width: 1.5px 0 0 1.5px; }
-  .scan-frame::after  { top: 0; right: 0; border-width: 1.5px 1.5px 0 0; }
-  .scan-frame .c3::before { bottom: 0; left: 0; border-width: 0 0 1.5px 1.5px; }
-  .scan-frame .c3::after  { bottom: 0; right: 0; border-width: 0 1.5px 1.5px 0; }
-
-  .scan-line {
-    position: absolute;
-    left: 6%; right: 6%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    animation: scanline 2s ease-in-out infinite;
-    top: 10%;
-  }
-  @keyframes scanline {
-    0%   { top: 10%; opacity: 0; }
-    10%  { opacity: 1; }
-    90%  { opacity: 1; }
-    100% { top: 90%; opacity: 0; }
-  }
-
-  .scanner-hint {
-    text-align: center;
-    font-size: 12px;
-    color: var(--text3);
-    letter-spacing: 0.05em;
-  }
-
-  /* Manual input */
-  .manual-row {
-    display: flex;
-    gap: 8px;
-  }
-  .manual-input {
-    flex: 1;
-    padding: 12px 14px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: var(--r);
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    -webkit-appearance: none;
-  }
-  .manual-input:focus {
-    outline: none;
-    border-color: var(--border2);
-  }
-  .manual-input::placeholder { color: var(--text3); }
-  .manual-btn {
-    padding: 12px 16px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: var(--r);
-    color: var(--text2);
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    cursor: pointer;
-    -webkit-appearance: none;
-    white-space: nowrap;
-  }
-  .manual-btn:active { background: var(--surface2); }
-
-  /* Result card */
-  .result-card {
-    background: var(--surface);
-    border: 0.5px solid var(--border2);
-    border-radius: var(--r-lg);
-    overflow: hidden;
-    display: none;
-  }
-  .result-card.visible { display: block; }
-
-  .result-photo {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    object-fit: contain;
-    background: #111;
-    display: block;
-  }
-  .result-photo-placeholder {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    background: var(--surface2);
-    display: none;
-    align-items: center;
-    justify-content: center;
-  }
-  .result-photo-placeholder span {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .result-body {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .result-meta {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .result-name-wrap {}
-  .result-brand {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  .result-name {
-    font-family: 'Instrument Serif', serif;
-    font-size: 19px;
-    font-weight: 400;
-    line-height: 1.25;
-    color: var(--text);
-  }
-
-  /* Nutri-Score badge */
-  .nutriscore-badge {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-  .nutriscore-label {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text3);
-  }
-  .nutriscore-letter {
-    width: 42px; height: 42px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'DM Mono', monospace;
-    font-size: 20px;
-    font-weight: 400;
-    color: #fff;
-    letter-spacing: 0;
-  }
-  .ns-a { background: var(--ns-a); }
-  .ns-b { background: var(--ns-b); }
-  .ns-c { background: var(--ns-c); color: #111; }
-  .ns-d { background: var(--ns-d); }
-  .ns-e { background: var(--ns-e); }
-  .ns-unknown { background: var(--surface2); color: var(--text3); font-size: 14px; }
-
-  /* Macros table */
-  .macros {
-    border-top: 0.5px solid var(--border);
-    padding-top: 16px;
-  }
-  .macros-title {
-    font-size: 10px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text3);
-    margin-bottom: 12px;
-  }
-  .macros-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
-  .macro-item {
-    background: var(--surface2);
-    border-radius: 8px;
-    padding: 10px 8px;
-    text-align: center;
-  }
-  .macro-val {
-    font-size: 15px;
-    font-weight: 400;
-    color: var(--text);
-    display: block;
-  }
-  .macro-key {
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: 0.06em;
-    display: block;
-    margin-top: 2px;
-  }
-  .macro-item.kcal .macro-val { color: var(--accent); }
-
-  /* Barcode display */
-  .barcode-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-top: 4px;
-    border-top: 0.5px solid var(--border);
-  }
-  .barcode-num {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.06em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Loading state */
-  .loading {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 24px;
-    color: var(--text3);
-    font-size: 12px;
-    letter-spacing: 0.08em;
-  }
-  .loading.visible { display: flex; }
-
-  .spinner {
-    width: 16px; height: 16px;
-    border: 1.5px solid var(--border2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Error */
-  .error-msg {
-    display: none;
-    padding: 14px 16px;
-    background: rgba(230,51,18,0.08);
-    border: 0.5px solid rgba(230,51,18,0.2);
-    border-radius: var(--r);
-    font-size: 12px;
-    color: #e66350;
-    letter-spacing: 0.04em;
-  }
-  .error-msg.visible { display: block; }
-
-  /* Success flash */
-  @keyframes flash {
-    0%   { border-color: var(--accent); }
-    100% { border-color: var(--border2); }
-  }
-  .scanner-container.flash { animation: flash 0.4s ease-out; }
-
-  /* Bottom bar */
-  .bottom-bar {
-    padding: 12px 24px calc(env(safe-area-inset-bottom, 0px) + 12px);
-    border-top: 0.5px solid var(--border);
-    text-align: center;
-  }
-  .bottom-bar span {
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
+/* ---- JOURNAL PAGE ---- */
+.day-summary{padding:20px 20px 16px;background:var(--surface);border-bottom:0.5px solid var(--border);flex-shrink:0}
+.day-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.day-title{font-family:'Instrument Serif',serif;font-style:italic;font-size:20px;color:var(--text)}
+.day-date{font-size:11px;color:var(--text3);letter-spacing:.06em}
+.day-kcal-row{display:flex;align-items:baseline;gap:6px;margin-bottom:10px}
+.day-kcal-big{font-size:34px;color:var(--accent);letter-spacing:-1px;line-height:1}
+.day-kcal-goal{font-size:12px;color:var(--text3)}
+.progress-bar-wrap{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:14px}
+.progress-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .4s ease;max-width:100%}
+.progress-bar-fill.over{background:#e63312}
+.day-macros-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.day-macro{background:var(--surface2);border-radius:10px;padding:10px 8px;text-align:center}
+.day-macro-val{font-size:15px;color:var(--text);display:block}
+.day-macro-key{font-size:10px;color:var(--text3);display:block;margin-top:1px}
+.date-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:0.5px solid var(--border);background:var(--surface);flex-shrink:0}
+.date-nav-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:4px 10px;-webkit-appearance:none;transition:color .1s}
+.date-nav-btn:active{color:var(--text)}
+.date-nav-label{font-size:12px;color:var(--text2);letter-spacing:.04em}
+.meals-list{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+.meal-section{}
+.meal-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:var(--r) var(--r) 0 0;border:0.5px solid transparent}
+.meal-header-left{display:flex;align-items:center;gap:8px}
+.meal-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.meal-name{font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.meal-total-kcal{font-size:11px}
+.meal-section[data-meal="breakfast"] .meal-header{background:rgba(240,160,80,.08);border-color:rgba(240,160,80,.2)}
+.meal-section[data-meal="breakfast"] .meal-dot,.meal-section[data-meal="breakfast"] .meal-total-kcal{color:var(--mb)}
+.meal-section[data-meal="breakfast"] .meal-dot{background:var(--mb)}
+.meal-section[data-meal="breakfast"] .meal-name{color:var(--mb)}
+.meal-section[data-meal="lunch"] .meal-header{background:rgba(112,200,160,.08);border-color:rgba(112,200,160,.2)}
+.meal-section[data-meal="lunch"] .meal-dot{background:var(--ml)}
+.meal-section[data-meal="lunch"] .meal-name,.meal-section[data-meal="lunch"] .meal-total-kcal{color:var(--ml)}
+.meal-section[data-meal="snack"] .meal-header{background:rgba(160,144,224,.08);border-color:rgba(160,144,224,.2)}
+.meal-section[data-meal="snack"] .meal-dot{background:var(--ms)}
+.meal-section[data-meal="snack"] .meal-name,.meal-section[data-meal="snack"] .meal-total-kcal{color:var(--ms)}
+.meal-section[data-meal="dinner"] .meal-header{background:rgba(96,144,216,.08);border-color:rgba(96,144,216,.2)}
+.meal-section[data-meal="dinner"] .meal-dot{background:var(--md)}
+.meal-section[data-meal="dinner"] .meal-name,.meal-section[data-meal="dinner"] .meal-total-kcal{color:var(--md)}
+.meal-items{background:var(--surface);border:0.5px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r)}
+.meal-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:0.5px solid var(--border)}
+.meal-item:last-child{border-bottom:none}
+.meal-item-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--surface2);flex-shrink:0}
+.meal-item-thumb-ph{width:36px;height:36px;border-radius:8px;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+.meal-item-info{flex:1;min-width:0}
+.meal-item-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meal-item-qty{font-size:11px;color:var(--text3)}
+.meal-item-kcal{font-size:13px;color:var(--text2);flex-shrink:0}
+.meal-item-ns{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0}
+.meal-item-del{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;font-size:18px;flex-shrink:0;line-height:1;-webkit-appearance:none}
+.meal-item-del:active{color:#e63312}
+.meal-empty{padding:14px;text-align:center;font-size:11px;color:var(--text3);letter-spacing:.06em}
+.toast{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--surface3);border:0.5px solid var(--border2);border-radius:40px;padding:10px 18px;font-size:12px;color:var(--accent);letter-spacing:.05em;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:200}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="header">
-    <h1>Scanner Aliments</h1>
-    <div class="header-dot"></div>
-  </header>
 
-  <main class="content">
+<nav class="tabs-nav">
+  <button class="tab-btn active" onclick="showTab('scanner')" id="tab-scanner">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+      <rect x="1" y="5" width="2" height="10" fill="currentColor" opacity=".8"/>
+      <rect x="4.5" y="5" width="1" height="10" fill="currentColor" opacity=".5"/>
+      <rect x="7" y="5" width="2.5" height="10" fill="currentColor"/>
+      <rect x="11" y="5" width="1" height="10" fill="currentColor" opacity=".5"/>
+      <rect x="13.5" y="5" width="1.5" height="10" fill="currentColor" opacity=".8"/>
+      <rect x="16" y="5" width="1" height="10" fill="currentColor"/>
+      <rect x="18" y="5" width="1" height="10" fill="currentColor" opacity=".4"/>
+    </svg>Scanner
+  </button>
+  <button class="tab-btn" onclick="showTab('journal')" id="tab-journal">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+      <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/>
+      <line x1="7" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="7" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      <line x1="7" y1="13" x2="10" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>Journal
+  </button>
+</nav>
 
-    <!-- Scan button -->
-    <button class="scan-btn" id="scanBtn" onclick="toggleScanner()">
-      <svg class="scan-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1" y="5" width="2" height="10" fill="currentColor" opacity="0.7"/>
-        <rect x="4.5" y="5" width="1" height="10" fill="currentColor" opacity="0.5"/>
-        <rect x="7" y="5" width="2.5" height="10" fill="currentColor"/>
-        <rect x="11" y="5" width="1" height="10" fill="currentColor" opacity="0.5"/>
-        <rect x="13.5" y="5" width="1.5" height="10" fill="currentColor" opacity="0.7"/>
-        <rect x="16" y="5" width="1" height="10" fill="currentColor"/>
-        <rect x="18" y="5" width="1" height="10" fill="currentColor" opacity="0.4"/>
-      </svg>
-      <span id="scanBtnLabel">Scanner un produit</span>
-    </button>
+<!-- PAGE SCANNER -->
+<div class="page scanner-page active" id="page-scanner">
+  <button class="scan-btn" id="scanBtn" onclick="toggleScanner()">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+      <rect x="1" y="5" width="2" height="10" fill="currentColor" opacity=".7"/>
+      <rect x="4.5" y="5" width="1" height="10" fill="currentColor" opacity=".5"/>
+      <rect x="7" y="5" width="2.5" height="10" fill="currentColor"/>
+      <rect x="11" y="5" width="1" height="10" fill="currentColor" opacity=".5"/>
+      <rect x="13.5" y="5" width="1.5" height="10" fill="currentColor" opacity=".7"/>
+      <rect x="16" y="5" width="1" height="10" fill="currentColor"/>
+      <rect x="18" y="5" width="1" height="10" fill="currentColor" opacity=".4"/>
+    </svg>
+    <span id="scanBtnLabel">Scanner un produit</span>
+  </button>
 
-    <!-- Scanner area -->
-    <div class="scanner-wrap" id="scannerWrap">
-      <div class="scanner-container" id="scannerContainer">
-        <div id="scanner-div"></div>
-        <div class="scanner-overlay">
-          <div class="scan-frame">
-            <div class="c3"></div>
-            <div class="scan-line"></div>
-          </div>
+  <div class="scanner-wrap" id="scannerWrap">
+    <div class="scanner-container" id="scannerContainer">
+      <div id="scanner-div"></div>
+      <div class="scanner-overlay">
+        <div class="scan-frame"><div class="c3"></div><div class="scan-line"></div></div>
+      </div>
+    </div>
+    <p class="scanner-hint">Centrez le code-barres dans le cadre</p>
+  </div>
+
+  <div class="manual-row">
+    <input class="manual-input" type="number" id="manualInput" placeholder="Code EAN-13 manuel…" inputmode="numeric">
+    <button class="manual-btn" onclick="manualLookup()">Chercher</button>
+  </div>
+
+  <div class="loading" id="loading"><div class="spinner"></div><span>Recherche en cours…</span></div>
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="result-card" id="resultCard">
+    <img class="result-photo" id="resultPhoto" alt="">
+    <div class="result-photo-placeholder" id="resultPlaceholder"><span>Pas de photo</span></div>
+    <div class="result-body">
+      <div class="result-meta">
+        <div>
+          <div class="result-brand" id="resultBrand"></div>
+          <div class="result-name" id="resultName"></div>
+        </div>
+        <div class="nutriscore-badge">
+          <span class="nutriscore-label">Nutri</span>
+          <div class="nutriscore-letter" id="nutriscoreBox">?</div>
         </div>
       </div>
-      <p class="scanner-hint">Centrez le code-barres dans le cadre</p>
-    </div>
-
-    <!-- Manual input -->
-    <div class="manual-row">
-      <input class="manual-input" type="number" id="manualInput"
-        placeholder="Code EAN-13 manuel…" inputmode="numeric">
-      <button class="manual-btn" onclick="manualLookup()">Chercher</button>
-    </div>
-
-    <!-- Loading -->
-    <div class="loading" id="loading">
-      <div class="spinner"></div>
-      <span>Recherche en cours…</span>
-    </div>
-
-    <!-- Error -->
-    <div class="error-msg" id="errorMsg"></div>
-
-    <!-- Result -->
-    <div class="result-card" id="resultCard">
-      <img class="result-photo" id="resultPhoto" alt="Photo du produit">
-      <div class="result-photo-placeholder" id="resultPlaceholder">
-        <span>Pas de photo</span>
+      <div class="macros">
+        <div class="macros-title">Pour 100 g</div>
+        <div class="macros-grid">
+          <div class="macro-item kcal"><span class="macro-val" id="macroKcal">—</span><span class="macro-key">kcal</span></div>
+          <div class="macro-item"><span class="macro-val" id="macroGlucides">—</span><span class="macro-key">glucides</span></div>
+          <div class="macro-item"><span class="macro-val" id="macroLipides">—</span><span class="macro-key">lipides</span></div>
+          <div class="macro-item"><span class="macro-val" id="macroProteines">—</span><span class="macro-key">protéines</span></div>
+        </div>
       </div>
-      <div class="result-body">
-        <div class="result-meta">
-          <div class="result-name-wrap">
-            <div class="result-brand" id="resultBrand"></div>
-            <div class="result-name" id="resultName"></div>
-          </div>
-          <div class="nutriscore-badge">
-            <span class="nutriscore-label">Nutri</span>
-            <div class="nutriscore-letter" id="nutriscoreBox">?</div>
-          </div>
+      <div class="add-to-meal">
+        <div class="add-to-meal-title">Ajouter au journal</div>
+        <div class="qty-row">
+          <span class="qty-label">Quantité</span>
+          <input class="qty-input" type="number" id="qtyInput" value="100" min="1" max="2000" inputmode="decimal">
+          <span class="qty-unit">g</span>
+          <span class="qty-kcal" id="qtyKcal">— kcal</span>
         </div>
-
-        <div class="macros" id="macrosSection">
-          <div class="macros-title">Pour 100 g</div>
-          <div class="macros-grid">
-            <div class="macro-item kcal">
-              <span class="macro-val" id="macroKcal">—</span>
-              <span class="macro-key">kcal</span>
-            </div>
-            <div class="macro-item">
-              <span class="macro-val" id="macroGlucides">—</span>
-              <span class="macro-key">glucides</span>
-            </div>
-            <div class="macro-item">
-              <span class="macro-val" id="macroLipides">—</span>
-              <span class="macro-key">lipides</span>
-            </div>
-            <div class="macro-item">
-              <span class="macro-val" id="macroProteines">—</span>
-              <span class="macro-key">protéines</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="barcode-row">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <rect x="0" y="2" width="1.5" height="10" fill="rgba(240,236,227,0.25)"/>
-            <rect x="3" y="2" width="1" height="10" fill="rgba(240,236,227,0.2)"/>
-            <rect x="5.5" y="2" width="2" height="10" fill="rgba(240,236,227,0.25)"/>
-            <rect x="9" y="2" width="1" height="10" fill="rgba(240,236,227,0.2)"/>
-            <rect x="11.5" y="2" width="2.5" height="10" fill="rgba(240,236,227,0.25)"/>
-          </svg>
-          <span class="barcode-num" id="barcodeNum"></span>
+        <div class="meal-btns">
+          <button class="meal-add-btn" data-meal="breakfast" onclick="addToJournal('breakfast')">🌅 Petit-déj.</button>
+          <button class="meal-add-btn" data-meal="lunch"     onclick="addToJournal('lunch')">☀️ Déjeuner</button>
+          <button class="meal-add-btn" data-meal="snack"     onclick="addToJournal('snack')">🍎 Collation</button>
+          <button class="meal-add-btn" data-meal="dinner"    onclick="addToJournal('dinner')">🌙 Dîner</button>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-  </main>
+<!-- PAGE JOURNAL -->
+<div class="page journal-page" id="page-journal">
+  <div class="day-summary">
+    <div class="day-header">
+      <span class="day-title">Aujourd'hui</span>
+      <span class="day-date" id="journalDate"></span>
+    </div>
+    <div class="day-kcal-row">
+      <span class="day-kcal-big" id="totalKcal">0</span>
+      <span class="day-kcal-goal">/ 2000 kcal</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+    </div>
+    <div class="day-macros-row">
+      <div class="day-macro"><span class="day-macro-val" id="totalGlucides">0g</span><span class="day-macro-key">glucides</span></div>
+      <div class="day-macro"><span class="day-macro-val" id="totalLipides">0g</span><span class="day-macro-key">lipides</span></div>
+      <div class="day-macro"><span class="day-macro-val" id="totalProteines">0g</span><span class="day-macro-key">protéines</span></div>
+    </div>
+  </div>
 
-  <footer class="bottom-bar">
-    <span>données · Open Food Facts</span>
-  </footer>
+  <div class="date-nav">
+    <button class="date-nav-btn" onclick="changeDay(-1)">‹</button>
+    <span class="date-nav-label" id="dateNavLabel"></span>
+    <button class="date-nav-btn" id="btnNextDay" onclick="changeDay(1)">›</button>
+  </div>
+
+  <div class="meals-list">
+    <div class="meal-section" data-meal="breakfast">
+      <div class="meal-header"><div class="meal-header-left"><div class="meal-dot"></div><span class="meal-name">Petit-déjeuner</span></div><span class="meal-total-kcal" id="kcal-breakfast">0 kcal</span></div>
+      <div class="meal-items" id="items-breakfast"></div>
+    </div>
+    <div class="meal-section" data-meal="lunch">
+      <div class="meal-header"><div class="meal-header-left"><div class="meal-dot"></div><span class="meal-name">Déjeuner</span></div><span class="meal-total-kcal" id="kcal-lunch">0 kcal</span></div>
+      <div class="meal-items" id="items-lunch"></div>
+    </div>
+    <div class="meal-section" data-meal="snack">
+      <div class="meal-header"><div class="meal-header-left"><div class="meal-dot"></div><span class="meal-name">Collation</span></div><span class="meal-total-kcal" id="kcal-snack">0 kcal</span></div>
+      <div class="meal-items" id="items-snack"></div>
+    </div>
+    <div class="meal-section" data-meal="dinner">
+      <div class="meal-header"><div class="meal-header-left"><div class="meal-dot"></div><span class="meal-name">Dîner</span></div><span class="meal-total-kcal" id="kcal-dinner">0 kcal</span></div>
+      <div class="meal-items" id="items-dinner"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 </div>
 
 <script>
-let scanning = false;
-let lastCode = null;
+/* ===== ÉTAT ===== */
+let currentProduct = null;
+let currentDateOffset = 0;
 
-// --- Stratégie de détection ---
-// 1. BarcodeDetector natif (iOS 17+, Chrome Android) — le plus fiable
-// 2. html5-qrcode en fallback
+function getJournal() {
+  try { return JSON.parse(localStorage.getItem('journal_v2') || '{}'); } catch(e) { return {}; }
+}
+function saveJournal(j) { localStorage.setItem('journal_v2', JSON.stringify(j)); }
 
-let useNative = false;
-let nativeDetector = null;
-let videoStream = null;
-let animFrameId = null;
-let html5QrCode = null;
+function dateKey(offset) {
+  const d = new Date(); d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0,10);
+}
+function formatDateLabel(offset) {
+  if (offset === 0) return "Aujourd'hui";
+  if (offset === -1) return 'Hier';
+  const d = new Date(); d.setDate(d.getDate() + offset);
+  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
 
-(async () => {
-  if ('BarcodeDetector' in window) {
-    try {
-      const supported = await BarcodeDetector.getSupportedFormats();
-      const eanSupported = supported.includes('ean_13') || supported.includes('ean-13');
-      if (eanSupported || supported.length > 0) {
-        nativeDetector = new BarcodeDetector({
-          formats: ['ean_13','ean_8','upc_a','upc_e','code_128','code_39'].filter(f => supported.includes(f))
-        });
-        useNative = true;
+/* ===== TABS ===== */
+function showTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab === 'journal') renderJournal();
+}
+
+/* ===== SCANNER ===== */
+let scanning=false, lastCode=null;
+let useNative=false, nativeDetector=null;
+let videoStream=null, animFrameId=null, html5QrCode=null;
+
+(async()=>{
+  if('BarcodeDetector' in window){
+    try{
+      const sup=await BarcodeDetector.getSupportedFormats();
+      if(sup.length>0){
+        nativeDetector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39'].filter(f=>sup.includes(f))});
+        useNative=true;
       }
-    } catch(e) {}
+    }catch(e){}
   }
 })();
 
-function toggleScanner() {
-  if (scanning) stopScanner();
-  else startScanner();
+function toggleScanner(){ if(scanning) stopScanner(); else startScanner(); }
+
+async function startScanner(){
+  document.getElementById('scannerWrap').classList.add('visible');
+  document.getElementById('scanBtn').classList.add('active');
+  document.getElementById('scanBtnLabel').textContent='Arrêter le scanner';
+  scanning=true; hideError();
+  if(useNative) await startNativeScanner(); else await startFallbackScanner();
 }
 
-async function startScanner() {
-  const wrap = document.getElementById('scannerWrap');
-  const btn  = document.getElementById('scanBtn');
-  const lbl  = document.getElementById('scanBtnLabel');
-
-  wrap.classList.add('visible');
-  btn.classList.add('active');
-  lbl.textContent = 'Arrêter le scanner';
-  scanning = true;
-  hideError();
-
-  if (useNative) {
-    await startNativeScanner();
-  } else {
-    await startFallbackScanner();
-  }
-}
-
-/* ---- BarcodeDetector natif via canvas (iOS Safari compatible) ---- */
-async function startNativeScanner() {
-  const scannerDiv = document.getElementById('scanner-div');
-  scannerDiv.innerHTML = '';
-
-  const video = document.createElement('video');
-  video.setAttribute('playsinline', '');
-  video.setAttribute('autoplay', '');
-  video.setAttribute('muted', '');
-  video.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-  scannerDiv.appendChild(video);
-
-  const canvas = document.createElement('canvas');
-  canvas.style.display = 'none';
-  scannerDiv.appendChild(canvas);
-
-  try {
-    videoStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width:  { ideal: 1920 },
-        height: { ideal: 1080 }
-      }
-    });
-
-    // Autofocus continu si disponible
-    const track = videoStream.getVideoTracks()[0];
-    if (track) {
-      try {
-        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-      } catch(e) {}
-    }
-
-    video.srcObject = videoStream;
-    await new Promise(resolve => { video.onloadedmetadata = resolve; });
+async function startNativeScanner(){
+  const div=document.getElementById('scanner-div'); div.innerHTML='';
+  const video=document.createElement('video');
+  video.setAttribute('playsinline',''); video.setAttribute('autoplay',''); video.setAttribute('muted','');
+  video.style.cssText='width:100%;height:100%;object-fit:cover;display:block;';
+  div.appendChild(video);
+  const canvas=document.createElement('canvas'); canvas.style.display='none'; div.appendChild(canvas);
+  try{
+    videoStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    const track=videoStream.getVideoTracks()[0];
+    if(track){try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}}
+    video.srcObject=videoStream;
+    await new Promise(resolve=>{video.onloadedmetadata=resolve;});
     await video.play();
-    canvas.width  = video.videoWidth  || 1920;
-    canvas.height = video.videoHeight || 1080;
-    detectLoop(video, canvas);
-  } catch(err) {
-    showError("Impossible d'accéder à la caméra. Autorisez l'accès dans Safari (Réglages → Safari → Caméra).");
+    canvas.width=video.videoWidth||1920; canvas.height=video.videoHeight||1080;
+    detectLoop(video,canvas);
+  }catch(err){
+    showError("Impossible d'accéder à la caméra. Autorisez dans Safari (Réglages → Safari → Caméra).");
     stopScanner();
   }
 }
 
-let lastDetectTime = 0;
+let lastDetectTime=0;
 
-// Renforce le contraste en niveaux de gris pour aider la détection
-function enhanceContrast(ctx, w, h) {
-  const imageData = ctx.getImageData(0, 0, w, h);
-  const d = imageData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    const c = Math.min(255, Math.max(0, 1.8 * (gray - 128) + 128));
-    d[i] = d[i+1] = d[i+2] = c;
+function enhanceContrast(ctx,w,h){
+  const d=ctx.getImageData(0,0,w,h); const px=d.data;
+  for(let i=0;i<px.length;i+=4){
+    const g=0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
+    const c=Math.min(255,Math.max(0,1.8*(g-128)+128));
+    px[i]=px[i+1]=px[i+2]=c;
   }
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(d,0,0);
 }
 
-function makeCanvasFromVideo(video, sx, sy, sw, sh, enhance) {
-  const c = document.createElement('canvas');
-  c.width = sw; c.height = sh;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
-  if (enhance) enhanceContrast(ctx, sw, sh);
+function makeCV(video,sx,sy,sw,sh,enhance){
+  const c=document.createElement('canvas'); c.width=sw; c.height=sh;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(video,sx,sy,sw,sh,0,0,sw,sh);
+  if(enhance) enhanceContrast(ctx,sw,sh);
   return c;
 }
 
-function detectLoop(video, canvas) {
-  if (!scanning) return;
-  const now = performance.now();
-
-  if (now - lastDetectTime >= 150 && video.readyState >= 2 && video.videoWidth > 0) {
-    lastDetectTime = now;
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    // Zone centrale 70% x 50%
-    const cw = Math.round(vw * 0.7), ch = Math.round(vh * 0.5);
-    const cx = Math.round((vw - cw) / 2),  cy = Math.round((vh - ch) / 2);
-
-    // 3 passes : plein cadre | crop centre | crop centre + contraste
-    const c1 = makeCanvasFromVideo(video, 0, 0, vw, vh, false);
-    const c2 = makeCanvasFromVideo(video, cx, cy, cw, ch, false);
-    const c3 = makeCanvasFromVideo(video, cx, cy, cw, ch, true);
-
-    Promise.all([c1, c2, c3].map(c =>
-      createImageBitmap(c).then(b => nativeDetector.detect(b)).catch(() => [])
-    )).then(results => {
-      const found = results.flat();
-      if (found.length > 0) onScanSuccess(found[0].rawValue);
+function detectLoop(video,canvas){
+  if(!scanning) return;
+  const now=performance.now();
+  if(now-lastDetectTime>=150&&video.readyState>=2&&video.videoWidth>0){
+    lastDetectTime=now;
+    const vw=video.videoWidth,vh=video.videoHeight;
+    const cw=Math.round(vw*.7),ch=Math.round(vh*.5);
+    const cx=Math.round((vw-cw)/2),cy=Math.round((vh-ch)/2);
+    Promise.all([
+      makeCV(video,0,0,vw,vh,false),
+      makeCV(video,cx,cy,cw,ch,false),
+      makeCV(video,cx,cy,cw,ch,true)
+    ].map(c=>createImageBitmap(c).then(b=>nativeDetector.detect(b)).catch(()=>[])
+    )).then(res=>{
+      const found=res.flat();
+      if(found.length>0) onScanSuccess(found[0].rawValue);
     });
   }
-
-  animFrameId = requestAnimationFrame(() => detectLoop(video, canvas));
+  animFrameId=requestAnimationFrame(()=>detectLoop(video,canvas));
 }
 
-/* ---- Fallback html5-qrcode ---- */
-async function startFallbackScanner() {
-  const scannerDiv = document.getElementById('scanner-div');
-  scannerDiv.innerHTML = '';
-
-  try {
-    html5QrCode = new Html5Qrcode("scanner-div");
-    await html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
-      onScanSuccess,
-      () => {}
-    );
-  } catch(err) {
-    showError("Impossible d'accéder à la caméra. Autorisez l'accès dans Safari (Réglages → Safari → Caméra).");
-    stopScanner();
-  }
+async function startFallbackScanner(){
+  document.getElementById('scanner-div').innerHTML='';
+  try{
+    html5QrCode=new Html5Qrcode("scanner-div");
+    await html5QrCode.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:150},aspectRatio:1.0},onScanSuccess,()=>{});
+  }catch(err){ showError("Impossible d'accéder à la caméra."); stopScanner(); }
 }
 
-/* ---- Stop ---- */
-async function stopScanner() {
-  scanning = false;
-
-  if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
-
-  if (videoStream) {
-    videoStream.getTracks().forEach(t => t.stop());
-    videoStream = null;
-  }
-
-  if (html5QrCode) {
-    try { await html5QrCode.stop(); } catch(e) {}
-    html5QrCode = null;
-  }
-
-  document.getElementById('scanner-div').innerHTML = '';
+async function stopScanner(){
+  scanning=false;
+  if(animFrameId){cancelAnimationFrame(animFrameId);animFrameId=null;}
+  if(videoStream){videoStream.getTracks().forEach(t=>t.stop());videoStream=null;}
+  if(html5QrCode){try{await html5QrCode.stop();}catch(e){}html5QrCode=null;}
+  document.getElementById('scanner-div').innerHTML='';
   document.getElementById('scannerWrap').classList.remove('visible');
   document.getElementById('scanBtn').classList.remove('active');
-  document.getElementById('scanBtnLabel').textContent = 'Scanner un produit';
+  document.getElementById('scanBtnLabel').textContent='Scanner un produit';
 }
 
-/* ---- Résultat de scan ---- */
-function onScanSuccess(code) {
-  if (!scanning) return;
-  if (code === lastCode) return;
-  lastCode = code;
-
-  const container = document.getElementById('scannerContainer');
-  container.classList.add('flash');
-  setTimeout(() => container.classList.remove('flash'), 400);
-
-  stopScanner().then(() => fetchProduct(code));
+function onScanSuccess(code){
+  if(!scanning||code===lastCode) return;
+  lastCode=code;
+  document.getElementById('scannerContainer').classList.add('flash');
+  setTimeout(()=>document.getElementById('scannerContainer').classList.remove('flash'),400);
+  stopScanner().then(()=>fetchProduct(code));
 }
 
-function manualLookup() {
-  const val = document.getElementById('manualInput').value.trim();
-  if (!val) return;
-  fetchProduct(val);
+function manualLookup(){
+  const val=document.getElementById('manualInput').value.trim();
+  if(!val) return; fetchProduct(val);
 }
 
-async function fetchProduct(barcode) {
-  hideError();
-  showLoading(true);
+async function fetchProduct(barcode){
+  hideError(); showLoading(true);
   document.getElementById('resultCard').classList.remove('visible');
-  lastCode = barcode;
-
-  try {
-    const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
-    const data = await res.json();
-
-    if (data.status !== 1) {
-      showError(`Produit introuvable pour le code « ${barcode} ».`);
-      return;
-    }
-
-    displayResult(data.product, barcode);
-  } catch(e) {
-    showError("Erreur réseau. Vérifiez votre connexion et réessayez.");
-  } finally {
-    showLoading(false);
-  }
+  currentProduct=null; lastCode=barcode;
+  try{
+    const res=await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data=await res.json();
+    if(data.status!==1){showError(`Produit introuvable pour « ${barcode} ».`);return;}
+    displayResult(data.product,barcode);
+  }catch(e){showError("Erreur réseau. Vérifiez votre connexion.");}
+  finally{showLoading(false);}
 }
 
-function displayResult(p, barcode) {
-  const name   = p.product_name || p.product_name_fr || 'Produit inconnu';
-  const brand  = p.brands || '';
-  const ns     = (p.nutriscore_grade || p.nutrition_grade_fr || '').toUpperCase();
-  const photo  = p.image_front_url || p.image_url || '';
-  const n100   = p.nutriments || {};
+function displayResult(p,barcode){
+  const name=p.product_name||p.product_name_fr||'Produit inconnu';
+  const brand=p.brands||'';
+  const ns=(p.nutriscore_grade||p.nutrition_grade_fr||'').toUpperCase();
+  const photo=p.image_front_url||p.image_url||'';
+  const n=p.nutriments||{};
+  const kcal100=round(n['energy-kcal_100g']||n['energy-kcal']||null);
+  const g100=round(n['carbohydrates_100g']||null);
+  const l100=round(n['fat_100g']||null);
+  const pr100=round(n['proteins_100g']||null);
 
-  const kcal     = round(n100['energy-kcal_100g'] || n100['energy-kcal'] || null);
-  const glucides = round(n100['carbohydrates_100g'] || null);
-  const lipides  = round(n100['fat_100g'] || null);
-  const proteines= round(n100['proteins_100g'] || null);
+  currentProduct={name,brand,photo,ns,kcal100,glucides100:g100,lipides100:l100,proteines100:pr100};
 
-  document.getElementById('resultName').textContent  = name;
-  document.getElementById('resultBrand').textContent = brand;
-  document.getElementById('barcodeNum').textContent  = barcode;
+  document.getElementById('resultName').textContent=name;
+  document.getElementById('resultBrand').textContent=brand;
+  document.getElementById('macroKcal').textContent=kcal100!==null?kcal100:'—';
+  document.getElementById('macroGlucides').textContent=g100!==null?g100+'g':'—';
+  document.getElementById('macroLipides').textContent=l100!==null?l100+'g':'—';
+  document.getElementById('macroProteines').textContent=pr100!==null?pr100+'g':'—';
 
-  document.getElementById('macroKcal').textContent      = kcal     !== null ? kcal    : '—';
-  document.getElementById('macroGlucides').textContent  = glucides !== null ? glucides+ 'g' : '—';
-  document.getElementById('macroLipides').textContent   = lipides  !== null ? lipides + 'g' : '—';
-  document.getElementById('macroProteines').textContent = proteines!== null ? proteines+'g': '—';
+  const nsBox=document.getElementById('nutriscoreBox');
+  nsBox.className='nutriscore-letter';
+  if(['A','B','C','D','E'].includes(ns)){nsBox.classList.add('ns-'+ns.toLowerCase());nsBox.textContent=ns;}
+  else{nsBox.classList.add('ns-unknown');nsBox.textContent='?';}
 
-  const nsBox = document.getElementById('nutriscoreBox');
-  nsBox.className = 'nutriscore-letter';
-  if (['A','B','C','D','E'].includes(ns)) {
-    nsBox.classList.add('ns-' + ns.toLowerCase());
-    nsBox.textContent = ns;
-  } else {
-    nsBox.classList.add('ns-unknown');
-    nsBox.textContent = '?';
-  }
+  const img=document.getElementById('resultPhoto');
+  const plch=document.getElementById('resultPlaceholder');
+  if(photo){img.src=photo;img.style.display='block';plch.style.display='none';img.onerror=()=>{img.style.display='none';plch.style.display='flex';};}
+  else{img.style.display='none';plch.style.display='flex';}
 
-  const img  = document.getElementById('resultPhoto');
-  const plch = document.getElementById('resultPlaceholder');
-  if (photo) {
-    img.src = photo;
-    img.style.display = 'block';
-    plch.style.display = 'none';
-    img.onerror = () => {
-      img.style.display = 'none';
-      plch.style.display = 'flex';
-    };
-  } else {
-    img.style.display = 'none';
-    plch.style.display = 'flex';
-  }
-
+  document.getElementById('qtyInput').value=100;
+  updateQtyKcal();
   document.getElementById('resultCard').classList.add('visible');
 }
 
-function round(val) {
-  if (val === null || val === undefined || isNaN(val)) return null;
-  return Math.round(val * 10) / 10;
+function updateQtyKcal(){
+  if(!currentProduct) return;
+  const qty=parseFloat(document.getElementById('qtyInput').value)||0;
+  const kcal=currentProduct.kcal100!==null?Math.round(currentProduct.kcal100*qty/100):null;
+  document.getElementById('qtyKcal').textContent=kcal!==null?kcal+' kcal':'— kcal';
 }
 
-function showLoading(v) {
-  document.getElementById('loading').classList.toggle('visible', v);
+document.getElementById('qtyInput').addEventListener('input',updateQtyKcal);
+
+/* ===== JOURNAL ===== */
+function addToJournal(meal){
+  if(!currentProduct) return;
+  const qty=parseFloat(document.getElementById('qtyInput').value)||100;
+  const f=qty/100;
+  const kcalTotal=currentProduct.kcal100!==null?Math.round(currentProduct.kcal100*f):null;
+
+  const journal=getJournal();
+  const key=dateKey(0);
+  if(!journal[key]) journal[key]={breakfast:[],lunch:[],snack:[],dinner:[]};
+  journal[key][meal].push({
+    id:Date.now(),
+    name:currentProduct.name,brand:currentProduct.brand,
+    photo:currentProduct.photo,ns:currentProduct.ns,
+    kcal100:currentProduct.kcal100,
+    glucides100:currentProduct.glucides100,
+    lipides100:currentProduct.lipides100,
+    proteines100:currentProduct.proteines100,
+    qty,kcalTotal
+  });
+  saveJournal(journal);
+
+  const labels={breakfast:'petit-déjeuner',lunch:'déjeuner',snack:'collation',dinner:'dîner'};
+  showToast('Ajouté au '+labels[meal]);
+  currentDateOffset=0;
+  showTab('journal');
 }
 
-function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.classList.add('visible');
+function deleteItem(dateK,meal,id){
+  const journal=getJournal();
+  if(!journal[dateK]||!journal[dateK][meal]) return;
+  journal[dateK][meal]=journal[dateK][meal].filter(i=>i.id!==id);
+  saveJournal(journal);
+  renderJournal();
 }
 
-function hideError() {
-  document.getElementById('errorMsg').classList.remove('visible');
+function changeDay(delta){
+  const next=currentDateOffset+delta;
+  if(next>0) return;
+  currentDateOffset=next;
+  renderJournal();
 }
 
-document.getElementById('manualInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') manualLookup();
-});
+function renderJournal(){
+  const key=dateKey(currentDateOffset);
+  const journal=getJournal();
+  const day=journal[key]||{breakfast:[],lunch:[],snack:[],dinner:[]};
+
+  // Date affichée dans le header (toujours "Aujourd'hui" même si on navigue)
+  const now=new Date();
+  document.getElementById('journalDate').textContent=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('dateNavLabel').textContent=formatDateLabel(currentDateOffset);
+  document.getElementById('btnNextDay').style.opacity=currentDateOffset>=0?'0.2':'1';
+
+  const meals=['breakfast','lunch','snack','dinner'];
+  let totalKcal=0,totalG=0,totalL=0,totalP=0;
+
+  meals.forEach(meal=>{
+    const items=day[meal]||[];
+    const container=document.getElementById('items-'+meal);
+    let mealKcal=0;
+
+    if(items.length===0){
+      container.innerHTML='<div class="meal-empty">Rien d\'ajouté</div>';
+    } else {
+      container.innerHTML=items.map(item=>{
+        mealKcal+=item.kcalTotal||0;
+        const nsClass=['A','B','C','D','E'].includes(item.ns)?'ns-'+item.ns.toLowerCase():'ns-unknown';
+        const nsText=['A','B','C','D','E'].includes(item.ns)?item.ns:'?';
+        const kcalStr=item.kcalTotal!==null?item.kcalTotal+' kcal':'—';
+        const thumb=item.photo
+          ?`<img class="meal-item-thumb" src="${item.photo}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="meal-item-thumb-ph" style="display:none">🍽</div>`
+          :`<div class="meal-item-thumb-ph">🍽</div>`;
+        return `<div class="meal-item">${thumb}<div class="meal-item-info"><div class="meal-item-name">${item.name}</div><div class="meal-item-qty">${item.qty}g</div></div><span class="meal-item-kcal">${kcalStr}</span><div class="meal-item-ns ${nsClass}">${nsText}</div><button class="meal-item-del" onclick="deleteItem('${key}','${meal}',${item.id})">×</button></div>`;
+      }).join('');
+    }
+
+    document.getElementById('kcal-'+meal).textContent=mealKcal+' kcal';
+    totalKcal+=mealKcal;
+    items.forEach(item=>{
+      const f=item.qty/100;
+      totalG+=(item.glucides100||0)*f;
+      totalL+=(item.lipides100||0)*f;
+      totalP+=(item.proteines100||0)*f;
+    });
+  });
+
+  document.getElementById('totalKcal').textContent=totalKcal;
+  document.getElementById('totalGlucides').textContent=Math.round(totalG)+'g';
+  document.getElementById('totalLipides').textContent=Math.round(totalL)+'g';
+  document.getElementById('totalProteines').textContent=Math.round(totalP)+'g';
+
+  const pct=Math.min(100,Math.round(totalKcal/2000*100));
+  const bar=document.getElementById('progressBar');
+  bar.style.width=pct+'%';
+  bar.classList.toggle('over',totalKcal>2000);
+}
+
+/* ===== UTILS ===== */
+function round(val){ if(val===null||val===undefined||isNaN(val)) return null; return Math.round(val*10)/10; }
+function showLoading(v){ document.getElementById('loading').classList.toggle('visible',v); }
+function showError(msg){ const el=document.getElementById('errorMsg'); el.textContent=msg; el.classList.add('visible'); }
+function hideError(){ document.getElementById('errorMsg').classList.remove('visible'); }
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+document.getElementById('manualInput').addEventListener('keydown',e=>{if(e.key==='Enter') manualLookup();});
+renderJournal();
 </script>
 </body>
 </html>
