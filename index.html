@@ -617,13 +617,26 @@ async function startNativeScanner() {
 
   try {
     videoStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
     });
+
+    // Autofocus continu si disponible
+    const track = videoStream.getVideoTracks()[0];
+    if (track) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      } catch(e) {}
+    }
+
     video.srcObject = videoStream;
     await new Promise(resolve => { video.onloadedmetadata = resolve; });
     await video.play();
-    canvas.width  = video.videoWidth  || 1280;
-    canvas.height = video.videoHeight || 720;
+    canvas.width  = video.videoWidth  || 1920;
+    canvas.height = video.videoHeight || 1080;
     detectLoop(video, canvas);
   } catch(err) {
     showError("Impossible d'accéder à la caméra. Autorisez l'accès dans Safari (Réglages → Safari → Caméra).");
@@ -633,22 +646,51 @@ async function startNativeScanner() {
 
 let lastDetectTime = 0;
 
+// Renforce le contraste en niveaux de gris pour aider la détection
+function enhanceContrast(ctx, w, h) {
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    const c = Math.min(255, Math.max(0, 1.8 * (gray - 128) + 128));
+    d[i] = d[i+1] = d[i+2] = c;
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function makeCanvasFromVideo(video, sx, sy, sw, sh, enhance) {
+  const c = document.createElement('canvas');
+  c.width = sw; c.height = sh;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+  if (enhance) enhanceContrast(ctx, sw, sh);
+  return c;
+}
+
 function detectLoop(video, canvas) {
   if (!scanning) return;
   const now = performance.now();
 
-  if (now - lastDetectTime >= 300 && video.readyState >= 2 && video.videoWidth > 0) {
+  if (now - lastDetectTime >= 150 && video.readyState >= 2 && video.videoWidth > 0) {
     lastDetectTime = now;
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
 
-    createImageBitmap(canvas).then(bitmap => {
-      return nativeDetector.detect(bitmap);
-    }).then(barcodes => {
-      if (barcodes.length > 0) onScanSuccess(barcodes[0].rawValue);
-    }).catch(() => {});
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    // Zone centrale 70% x 50%
+    const cw = Math.round(vw * 0.7), ch = Math.round(vh * 0.5);
+    const cx = Math.round((vw - cw) / 2),  cy = Math.round((vh - ch) / 2);
+
+    // 3 passes : plein cadre | crop centre | crop centre + contraste
+    const c1 = makeCanvasFromVideo(video, 0, 0, vw, vh, false);
+    const c2 = makeCanvasFromVideo(video, cx, cy, cw, ch, false);
+    const c3 = makeCanvasFromVideo(video, cx, cy, cw, ch, true);
+
+    Promise.all([c1, c2, c3].map(c =>
+      createImageBitmap(c).then(b => nativeDetector.detect(b)).catch(() => [])
+    )).then(results => {
+      const found = results.flat();
+      if (found.length > 0) onScanSuccess(found[0].rawValue);
+    });
   }
 
   animFrameId = requestAnimationFrame(() => detectLoop(video, canvas));
